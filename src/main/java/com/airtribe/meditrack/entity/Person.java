@@ -1,18 +1,21 @@
 package com.airtribe.meditrack.entity;
 
-public class Person {
+import com.airtribe.meditrack.util.Validator;
+
+public abstract class Person extends MedicalEntity {
     private String name;
     private int age;
     private String email;
     private String username;
     private String password;
 
-    public Person(String name, int age, String username, String email, String password) {
-        this.name = name;
-        this.age = age;
-        this.username = username;
-        this.email = email;
-        this.password = password;
+    protected Person(int id, String name, int age, String username, String email, String password) {
+        super(id);
+        this.name = Validator.requireNonBlank(name, "Name");
+        this.age = Validator.requireValidAge(age);
+        this.username = Validator.requireNonBlank(username, "Username");
+        this.email = Validator.requireValidEmail(email);
+        this.password = Validator.requireNonBlank(password, "Password");
     }
 
     public String getName() {
@@ -20,7 +23,7 @@ public class Person {
     }
 
     public void setName(String name) {
-        this.name = name;
+        this.name = Validator.requireNonBlank(name, "Name");
     }
 
     public int getAge() {
@@ -28,7 +31,7 @@ public class Person {
     }
 
     public void setAge(int age) {
-        this.age = age;
+        this.age = Validator.requireValidAge(age);
     }
 
     public String getEmail() {
@@ -36,7 +39,7 @@ public class Person {
     }
 
     public void setEmail(String email) {
-        this.email = email;
+        this.email = Validator.requireValidEmail(email);
     }
 
     public String getUsername() {
@@ -44,7 +47,7 @@ public class Person {
     }
 
     public void setUsername(String username) {
-        this.username = username;
+        this.username = Validator.requireNonBlank(username, "Username");
     }
 
     public String getPassword() {
@@ -52,6 +55,6 @@ public class Person {
     }
 
     public void setPassword(String password) {
-        this.password = password;
+        this.password = Validator.requireNonBlank(password, "Password");
     }
 }

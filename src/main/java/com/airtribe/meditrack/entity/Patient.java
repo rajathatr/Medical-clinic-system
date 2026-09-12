@@ -1,24 +1,29 @@
 package com.airtribe.meditrack.entity;
 
+import com.airtribe.meditrack.util.IdGenerator;
+import com.airtribe.meditrack.util.Validator;
+import java.util.ArrayList;
 import java.util.List;
 
-public class Patient extends Person{
-    private final int id;
-    private List<Integer> history;
+public class Patient extends Person implements Cloneable {
+    private List<Integer> appointmentHistory;
     private String currentIllness;
 
     public Patient(String name, int age, String username, String email, String password, String currentIllness) {
-        super(name, age, email, username, password);
-        this.currentIllness = currentIllness;
-        this.id = 0;
+        super(IdGenerator.getInstance().nextPatientId(), name, age, username, email, password);
+        this.appointmentHistory = new ArrayList<>();
+        this.currentIllness = Validator.requireNonBlank(currentIllness, "Current illness");
     }
 
-    public List<Integer> getHistory() {
-        return history;
+    public List<Integer> getAppointmentHistory() {
+        return List.copyOf(appointmentHistory);
     }
 
-    public void addToHistory(Integer history) {
-        this.history.add(history);
+    public void addAppointmentToHistory(int appointmentId) {
+        if (appointmentId <= 0) {
+            throw new IllegalArgumentException("Appointment id must be positive.");
+        }
+        appointmentHistory.add(appointmentId);
     }
 
     public String getCurrentIllness() {
@@ -26,10 +31,27 @@ public class Patient extends Person{
     }
 
     public void setCurrentIllness(String currentIllness) {
-        this.currentIllness = currentIllness;
+        this.currentIllness = Validator.requireNonBlank(currentIllness, "Current illness");
     }
 
-    public int getId() {
-        return id;
+    @Override
+    public String getDisplayName() {
+        return getName();
+    }
+
+    @Override
+    public Patient clone() {
+        try {
+            Patient copy = (Patient) super.clone();
+            copy.appointmentHistory = new ArrayList<>(appointmentHistory);
+            return copy;
+        } catch (CloneNotSupportedException exception) {
+            throw new AssertionError("Patient cloning should be supported.", exception);
+        }
+    }
+
+    @Override
+    public String toString() {
+        return "Patient " + getName() + " - Current illness: " + currentIllness;
     }
 }
