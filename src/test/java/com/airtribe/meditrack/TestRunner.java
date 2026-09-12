@@ -7,6 +7,7 @@ import com.airtribe.meditrack.entity.Doctor;
 import com.airtribe.meditrack.entity.Patient;
 import com.airtribe.meditrack.exception.InvalidDataException;
 import com.airtribe.meditrack.service.AppointmentService;
+import com.airtribe.meditrack.service.AnalyticsService;
 import com.airtribe.meditrack.service.BillingService;
 import com.airtribe.meditrack.service.DoctorService;
 import com.airtribe.meditrack.service.PatientService;
@@ -26,12 +27,16 @@ public final class TestRunner {
         PatientService patientService = new PatientService();
         AppointmentService appointmentService = new AppointmentService(doctorService, patientService);
         BillingService billingService = new BillingService(appointmentService, doctorService);
+        AnalyticsService analyticsService = new AnalyticsService(doctorService, appointmentService);
 
         Doctor doctor = doctorService.createDoctor(
                 "Asha Rao", 42, "asha", "asha@example.com", "password",
                 Specialization.CARDIOLOGY, new BigDecimal("850.00"));
         Patient patient = patientService.createPatient(
                 "Dev Kumar", 28, "dev", "dev@example.com", "password", "Fever");
+        Doctor secondDoctor = doctorService.createDoctor(
+                "Maya Singh", 35, "maya", "maya@example.com", "password",
+                Specialization.PEDIATRICS, new BigDecimal("650.00"));
 
         assert doctor.getId() == 1 : "The first doctor id should be 1.";
         assert patient.getId() == 1 : "The first patient id should be 1.";
@@ -76,7 +81,19 @@ public final class TestRunner {
 
         expectInvalidData(() -> billingService.generateBill(rescheduledAppointment.getId(), BillingType.STANDARD));
 
-        System.out.println("All Step 4 billing and service tests passed.");
+        assert analyticsService.filterDoctorsBySpecialization(Specialization.CARDIOLOGY).size() == 1
+                : "Specialization filtering should return one cardiologist.";
+        assertAmount(analyticsService.calculateAverageConsultationFee().orElseThrow(), "750.00");
+        assert analyticsService.countAppointmentsPerDoctor().get(doctor) == 3
+                : "The first doctor should have three recorded appointments.";
+        assert analyticsService.countAppointmentsPerDoctor().get(secondDoctor) == 0
+                : "A doctor without bookings should be included with zero appointments.";
+        assert analyticsService.getUpcomingConfirmedAppointments(LocalDate.of(2026, 9, 15)).size() == 2
+                : "Only the two confirmed appointments should be upcoming.";
+        assert analyticsService.findMostBookedDoctor().orElseThrow().equals(doctor)
+                : "The first doctor should have the most recorded appointments.";
+
+        System.out.println("All Step 5 analytics, billing, and service tests passed.");
     }
 
     private static void expectInvalidData(Runnable action) {
