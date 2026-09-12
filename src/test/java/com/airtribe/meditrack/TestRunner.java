@@ -2,12 +2,15 @@ package com.airtribe.meditrack;
 
 import com.airtribe.meditrack.constants.Specialization;
 import com.airtribe.meditrack.entity.Appointment;
+import com.airtribe.meditrack.entity.BillSummary;
 import com.airtribe.meditrack.entity.Doctor;
 import com.airtribe.meditrack.entity.Patient;
 import com.airtribe.meditrack.exception.InvalidDataException;
 import com.airtribe.meditrack.service.AppointmentService;
+import com.airtribe.meditrack.service.BillingService;
 import com.airtribe.meditrack.service.DoctorService;
 import com.airtribe.meditrack.service.PatientService;
+import com.airtribe.meditrack.constants.BillingType;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -22,6 +25,7 @@ public final class TestRunner {
         DoctorService doctorService = new DoctorService();
         PatientService patientService = new PatientService();
         AppointmentService appointmentService = new AppointmentService(doctorService, patientService);
+        BillingService billingService = new BillingService(appointmentService, doctorService);
 
         Doctor doctor = doctorService.createDoctor(
                 "Asha Rao", 42, "asha", "asha@example.com", "password",
@@ -55,7 +59,24 @@ public final class TestRunner {
         assert rescheduledAppointment.getId() == 2
                 : "Validation should reject a conflicting appointment before allocating its id.";
 
-        System.out.println("All Step 3 service tests passed.");
+        appointmentService.markAppointmentConfirmed(rescheduledAppointment.getId());
+        BillSummary standardBill = billingService.generateBill(rescheduledAppointment.getId(), BillingType.STANDARD);
+        assertAmount(standardBill.getDiscountAmount(), "0.00");
+        assertAmount(standardBill.getTaxAmount(), "42.50");
+        assertAmount(standardBill.getTotalAmount(), "892.50");
+
+        Appointment discountedAppointment = appointmentService.createAppointment(
+                doctor.getId(), patient.getId(), LocalDate.of(2026, 9, 15),
+                LocalTime.of(10, 0), LocalTime.of(10, 30));
+        appointmentService.markAppointmentConfirmed(discountedAppointment.getId());
+        BillSummary discountedBill = billingService.generateBill(discountedAppointment.getId(), BillingType.DISCOUNTED);
+        assertAmount(discountedBill.getDiscountAmount(), "85.00");
+        assertAmount(discountedBill.getTaxAmount(), "38.25");
+        assertAmount(discountedBill.getTotalAmount(), "803.25");
+
+        expectInvalidData(() -> billingService.generateBill(rescheduledAppointment.getId(), BillingType.STANDARD));
+
+        System.out.println("All Step 4 billing and service tests passed.");
     }
 
     private static void expectInvalidData(Runnable action) {
@@ -66,5 +87,10 @@ public final class TestRunner {
             // Expected result.
             System.out.println(expected.getMessage());
         }
+    }
+
+    private static void assertAmount(BigDecimal actual, String expected) {
+        assert actual.compareTo(new BigDecimal(expected)) == 0
+                : "Expected amount " + expected + " but got " + actual;
     }
 }
